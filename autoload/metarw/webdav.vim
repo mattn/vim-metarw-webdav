@@ -14,7 +14,11 @@ function! s:iferr(r)
 endfunction
 
 function! s:webdav_list(_)
-  return s:iferr(split(system(printf("davc %s://%s ls %s", a:_.scheme, a:_.host, a:_.path)), "\n"))
+  let r = s:iferr(split(system(printf("davc %s://%s ls %s", a:_.scheme, a:_.host, a:_.path)), "\n"))
+  if a:_.path != '/' && index(r, '../') == -1
+    let r = ['../'] + r
+  endif
+  return r
 endfunction
 
 function! s:webdav_get(_)
@@ -74,6 +78,7 @@ endfunction
 function! s:parse_incomplete_fakepath(incomplete_fakepath)
   let _ = {}
   let incomplete_fakepath = substitute(a:incomplete_fakepath, '\\', '/', 'g')
+  let incomplete_fakepath = substitute(incomplete_fakepath, '/[^/]\+/\.\./', '/', 'g')
   let fragments = matchlist(incomplete_fakepath, '^\(webdav\|webdavs\)://\([^/]\+\)\(/.*\)$')
   if len(fragments) <= 1
     echoerr 'Unexpected a:incomplete_fakepath:' string(incomplete_fakepath)
@@ -104,7 +109,6 @@ endfunction
 
 function! s:read_content(_)
   let response = s:webdav_get(a:_)
-  let g:hoge = a:_
   if a:_.path =~# '/$'
     return ['browse', s:response_to_result(a:_, response)]
   endif
